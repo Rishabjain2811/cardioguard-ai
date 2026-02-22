@@ -2,25 +2,67 @@ import streamlit as st
 import pickle
 import numpy as np
 
-# ---------------- CONFIG ----------------
+# ---------------- PAGE CONFIG ----------------
 st.set_page_config(page_title="CardioGuard AI", layout="wide")
 
-# ---------------- STYLE ----------------
+# ---------------- CUSTOM STYLING ----------------
 st.markdown("""
 <style>
-.main {
+body {
     background-color: #0f172a;
 }
+
+.block-container {
+    padding-top: 2rem;
+}
+
 .title {
-    text-align:center;
-    color:#d4af37;
+    text-align: center;
+    font-size: 42px;
+    font-weight: 600;
+    color: #f8fafc;
+    letter-spacing: 1px;
 }
+
 .subtitle {
-    text-align:center;
-    color:#cbd5e1;
+    text-align: center;
+    font-size: 16px;
+    color: #94a3b8;
+    margin-bottom: 40px;
 }
-.section {
-    margin-top:30px;
+
+.card {
+    background: #1e293b;
+    padding: 25px;
+    border-radius: 14px;
+    box-shadow: 0px 4px 20px rgba(0,0,0,0.3);
+    transition: 0.3s ease-in-out;
+}
+
+.card:hover {
+    transform: scale(1.01);
+}
+
+.stButton > button {
+    width: 100%;
+    background: linear-gradient(90deg,#d4af37,#b08930);
+    color: white;
+    border-radius: 10px;
+    height: 50px;
+    font-size: 16px;
+    transition: 0.3s;
+}
+
+.stButton > button:hover {
+    transform: scale(1.02);
+    background: linear-gradient(90deg,#b08930,#d4af37);
+}
+
+.section-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: #f1f5f9;
+    margin-top: 25px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -28,170 +70,96 @@ st.markdown("""
 # ---------------- LOAD MODEL ----------------
 model = pickle.load(open("model.pkl", "rb"))
 
-feature_names = ["age","sex","cp","trestbps","chol","fbs","restecg",
-                 "thalach","exang","oldpeak","slope","ca","thal"]
-
 # ---------------- HEADER ----------------
-st.markdown("<h1 class='title'>CardioGuard AI</h1>", unsafe_allow_html=True)
-st.markdown("<p class='subtitle'>Heart Attack Risk Prediction & Prevention Advisor</p>", unsafe_allow_html=True)
-
-st.markdown("---")
+st.markdown("<div class='title'>CardioGuard AI</div>", unsafe_allow_html=True)
+st.markdown("<div class='subtitle'>Heart Attack Risk Prediction & Prevention Advisory System</div>", unsafe_allow_html=True)
 
 # ---------------- INPUT SECTION ----------------
-st.markdown("## Patient Clinical Parameters")
+st.markdown("<div class='section-title'>Patient Clinical Parameters</div>", unsafe_allow_html=True)
 
-c1, c2, c3 = st.columns(3)
+col1, col2, col3 = st.columns(3)
 
-with c1:
+with col1:
     age = st.slider("Age", 20, 100, 45)
     sex = st.selectbox("Sex", ["Male", "Female"])
     sex = 1 if sex == "Male" else 0
-    trestbps = st.slider("Resting Blood Pressure", 80, 200, 120)
-    chol = st.slider("Cholesterol", 100, 600, 220)
+    resting_bp = st.slider("Resting Blood Pressure", 80, 200, 120)
 
-with c2:
-    cp = st.slider("Chest Pain Type (0-3)", 0, 3, 1)
-    thalach = st.slider("Max Heart Rate", 60, 220, 150)
-    exang = st.selectbox("Exercise Induced Angina", ["No", "Yes"])
-    exang = 1 if exang == "Yes" else 0
-    oldpeak = st.slider("ST Depression (Oldpeak)", 0.0, 6.0, 1.0)
+with col2:
+    cholesterol = st.slider("Serum Cholesterol", 100, 600, 220)
+    chest_pain = st.slider("Chest Pain Type", 0, 3, 1)
+    max_hr = st.slider("Maximum Heart Rate", 60, 220, 150)
 
-with c3:
-    fbs = st.selectbox("Fasting Sugar >120", ["No", "Yes"])
-    fbs = 1 if fbs == "Yes" else 0
-    ca = st.slider("Major Vessels (0-4)", 0, 4, 0)
-    slope = st.slider("Slope (0-2)", 0, 2, 1)
-    thal = st.slider("Thal (0-3)", 0, 3, 2)
-    restecg = st.slider("Rest ECG (0-2)", 0, 2, 1)
+with col3:
+    exercise_angina = st.selectbox("Exercise Induced Angina", ["No", "Yes"])
+    exercise_angina = 1 if exercise_angina == "Yes" else 0
+    fasting_sugar = st.selectbox("Fasting Blood Sugar > 120", ["No", "Yes"])
+    fasting_sugar = 1 if fasting_sugar == "Yes" else 0
+    st_depression = st.slider("ST Depression", 0.0, 6.0, 1.0)
+    major_vessels = st.slider("Major Vessels (0-4)", 0, 4, 0)
+    thalassemia = st.slider("Thalassemia Status", 0, 3, 2)
+    slope = st.slider("Slope of ST Segment", 0, 2, 1)
+    rest_ecg = st.slider("Rest ECG Result", 0, 2, 1)
 
-st.markdown("---")
+st.write("")
 
 # ---------------- PREDICTION ----------------
-if st.button("Analyze Heart Risk", use_container_width=True):
+if st.button("Analyze Cardiac Risk"):
 
-    data = np.array([[age,sex,cp,trestbps,chol,fbs,restecg,
-                      thalach,exang,oldpeak,slope,ca,thal]])
+    data = np.array([[age, sex, chest_pain, resting_bp, cholesterol,
+                      fasting_sugar, rest_ecg, max_hr, exercise_angina,
+                      st_depression, slope, major_vessels, thalassemia]])
 
-    prob = model.predict_proba(data)[0][1]
-    percent = round(prob * 100, 2)
+    probability = model.predict_proba(data)[0][1]
+    risk_percent = round(probability * 100, 2)
 
-    st.markdown("## Clinical Risk Report")
+    st.markdown("---")
+    st.markdown("<div class='section-title'>Clinical Risk Summary</div>", unsafe_allow_html=True)
 
-    # ---------------- RISK CATEGORY ----------------
-    if percent < 30:
-        level = "LOW"
-        st.success(f"Overall Clinical Risk Category: {level}")
-    elif percent < 70:
-        level = "MODERATE"
-        st.warning(f"Overall Clinical Risk Category: {level}")
+    # Risk Level
+    if risk_percent < 30:
+        st.success(f"Low Clinical Risk — {risk_percent}%")
+    elif risk_percent < 70:
+        st.warning(f"Moderate Clinical Risk — {risk_percent}%")
     else:
-        level = "HIGH"
-        st.error(f"Overall Clinical Risk Category: {level}")
+        st.error(f"High Clinical Risk — {risk_percent}%")
 
-    st.metric("Predicted Probability of Heart Disease", f"{percent}%")
-    st.progress(percent / 100)
+    st.progress(risk_percent / 100)
 
-    st.info("Risk estimation is based on multi-parameter interaction patterns, not individual thresholds alone.")
+    st.info("Prediction is based on combined interaction of multiple clinical indicators.")
 
-    # ---------------- FEATURE IMPORTANCE ----------------
-    st.markdown("### Top Contributing Model Features")
+    # Show only key abnormal factors
+    st.markdown("<div class='section-title'>Key Risk Indicators</div>", unsafe_allow_html=True)
 
-    importances = model.feature_importances_
-    sorted_indices = np.argsort(importances)[::-1][:3]
+    risk_factors = []
 
-    for idx in sorted_indices:
-        st.write(f"• {feature_names[idx]} (importance: {round(importances[idx],3)})")
+    if resting_bp > 140:
+        risk_factors.append("Elevated Resting Blood Pressure")
+    if cholesterol > 240:
+        risk_factors.append("High Serum Cholesterol")
+    if chest_pain > 1:
+        risk_factors.append("High-Risk Chest Pain Pattern")
+    if major_vessels > 0:
+        risk_factors.append("Major Vessel Involvement")
+    if st_depression > 1:
+        risk_factors.append("Significant ST Depression")
+    if exercise_angina == 1:
+        risk_factors.append("Exercise-Induced Angina Present")
 
-    # ---------------- PARAMETER STATUS ----------------
-    st.markdown("### Parameter Status Overview")
-
-    def status_check(name, value, low, high):
-        if value < low:
-            st.write(f"• {name}: Below normal range")
-        elif value > high:
-            st.write(f"• {name}: Above normal range")
-        else:
-            st.write(f"• {name}: Within normal range")
-
-    status_check("Blood Pressure", trestbps, 90, 140)
-    status_check("Cholesterol", chol, 150, 240)
-    status_check("Max Heart Rate", thalach, 120, 200)
-
-    # ---------------- RISK DRIVERS ----------------
-    st.markdown("### Primary Risk Indicators")
-
-    drivers = []
-
-    if cp > 1:
-        drivers.append("Abnormal chest pain pattern")
-    if ca > 0:
-        drivers.append("Coronary vessel blockage indicator")
-    if thal > 2:
-        drivers.append("Thalassemia abnormality")
-    if oldpeak > 1:
-        drivers.append("ST depression irregularity")
-    if chol > 240:
-        drivers.append("Elevated cholesterol level")
-    if trestbps > 140:
-        drivers.append("High resting blood pressure")
-
-    if drivers:
-        for d in drivers:
-            st.write("🔴", d)
+    if risk_factors:
+        for factor in risk_factors:
+            st.write("•", factor)
     else:
-        st.write("Risk influenced by complex multi-factor interaction.")
+        st.write("No dominant abnormal indicators detected.")
 
-    # ---------------- LIFESTYLE SCORE ----------------
-    st.markdown("### Heart Health Score")
+    # Recommendation
+    st.markdown("<div class='section-title'>Recommended Action</div>", unsafe_allow_html=True)
 
-    score = 100
-
-    # probability-based adjustment
-    if percent > 70:
-        score -= 25
-    elif percent > 40:
-        score -= 15
-
-    # clinical adjustments
-    if chol > 240: score -= 10
-    if trestbps > 140: score -= 10
-    if fbs == 1: score -= 5
-    if exang == 1: score -= 10
-
-    score = max(score, 0)
-
-    st.metric("Estimated Heart Health Score", f"{score}/100")
-
-    # ---------------- ACTION PLAN ----------------
-    st.markdown("### Recommended Preventive Actions")
-
-    actions = []
-
-    if chol > 240:
-        actions.append("Adopt low-fat, high-fiber diet")
-    if trestbps > 140:
-        actions.append("Reduce sodium intake and monitor blood pressure")
-    if thalach < 120:
-        actions.append("Increase aerobic exercise gradually")
-    if fbs == 1:
-        actions.append("Control sugar intake and monitor glucose")
-    if age > 50:
-        actions.append("Schedule periodic cardiology screening")
-
-    if not actions:
-        actions.append("Maintain current healthy lifestyle with periodic check-ups")
-
-    for a in actions:
-        st.write("✅", a)
-
-    # ---------------- FOLLOW UP ----------------
-    st.markdown("### Follow-Up Recommendation")
-
-    if level == "HIGH":
-        st.error("Consult a cardiologist for detailed clinical evaluation.")
-    elif level == "MODERATE":
-        st.warning("Medical check-up recommended in the near term.")
+    if risk_percent > 70:
+        st.error("Immediate cardiology consultation strongly recommended.")
+    elif risk_percent > 40:
+        st.warning("Medical evaluation advised in near term.")
     else:
-        st.success("Continue preventive lifestyle and routine monitoring.")
+        st.success("Maintain preventive lifestyle and routine monitoring.")
 
-    st.caption("Academic AI-based decision support tool — not a substitute for professional medical diagnosis.")
+    st.caption("Academic AI-based decision support system. Not a substitute for professional medical diagnosis.")
