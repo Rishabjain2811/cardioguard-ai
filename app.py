@@ -2,164 +2,97 @@ import streamlit as st
 import pickle
 import numpy as np
 
-# ---------------- PAGE CONFIG ----------------
+# ---------------- CONFIG ----------------
 st.set_page_config(page_title="CardioGuard AI", layout="wide")
 
-# ---------------- CUSTOM STYLING ----------------
-st.markdown("""
-<style>
-body {
-    background-color: #0f172a;
-}
-
-.block-container {
-    padding-top: 2rem;
-}
-
-.title {
-    text-align: center;
-    font-size: 42px;
-    font-weight: 600;
-    color: #f8fafc;
-    letter-spacing: 1px;
-}
-
-.subtitle {
-    text-align: center;
-    font-size: 16px;
-    color: #94a3b8;
-    margin-bottom: 40px;
-}
-
-.card {
-    background: #1e293b;
-    padding: 25px;
-    border-radius: 14px;
-    box-shadow: 0px 4px 20px rgba(0,0,0,0.3);
-    transition: 0.3s ease-in-out;
-}
-
-.card:hover {
-    transform: scale(1.01);
-}
-
-.stButton > button {
-    width: 100%;
-    background: linear-gradient(90deg,#d4af37,#b08930);
-    color: white;
-    border-radius: 10px;
-    height: 50px;
-    font-size: 16px;
-    transition: 0.3s;
-}
-
-.stButton > button:hover {
-    transform: scale(1.02);
-    background: linear-gradient(90deg,#b08930,#d4af37);
-}
-
-.section-title {
-    font-size: 22px;
-    font-weight: 600;
-    color: #f1f5f9;
-    margin-top: 25px;
-}
-</style>
-""", unsafe_allow_html=True)
-
 # ---------------- LOAD MODEL ----------------
-model = pickle.load(open("model.pkl", "rb"))
+model = pickle.load(open("model.pkl","rb"))
 
-# ---------------- HEADER ----------------
-st.markdown("<div class='title'>CardioGuard AI</div>", unsafe_allow_html=True)
-st.markdown("<div class='subtitle'>Heart Attack Risk Prediction & Prevention Advisory System</div>", unsafe_allow_html=True)
+# ---------------- TITLE ----------------
+st.title("CardioGuard AI")
+st.subheader("Heart Attack Risk Assessment Tool")
 
-# ---------------- INPUT SECTION ----------------
-st.markdown("<div class='section-title'>Patient Clinical Parameters</div>", unsafe_allow_html=True)
+st.write("Enter basic lifestyle and health details to estimate your cardiac risk.")
 
-col1, col2, col3 = st.columns(3)
+# ---------------- USER INPUTS ----------------
+
+col1, col2 = st.columns(2)
 
 with col1:
-    age = st.slider("Age", 20, 100, 45)
-    sex = st.selectbox("Sex", ["Male", "Female"])
-    sex = 1 if sex == "Male" else 0
-    resting_bp = st.slider("Resting Blood Pressure", 80, 200, 120)
+
+    age = st.slider("Age", 18, 90, 35)
+
+    gender = st.selectbox("Gender", ["Male", "Female"])
+    sex = 1 if gender == "Male" else 0
+
+    weight = st.slider("Weight (kg)", 40, 120, 70)
+
+    height = st.slider("Height (cm)", 140, 200, 170)
+
+    smoking = st.selectbox("Do you smoke?", ["No", "Yes"])
+    smoking = 1 if smoking == "Yes" else 0
+
+    diabetes = st.selectbox("Do you have diabetes?", ["No", "Yes"])
+    diabetes = 1 if diabetes == "Yes" else 0
+
 
 with col2:
-    cholesterol = st.slider("Serum Cholesterol", 100, 600, 220)
-    chest_pain = st.slider("Chest Pain Type", 0, 3, 1)
-    max_hr = st.slider("Maximum Heart Rate", 60, 220, 150)
 
-with col3:
-    exercise_angina = st.selectbox("Exercise Induced Angina", ["No", "Yes"])
-    exercise_angina = 1 if exercise_angina == "Yes" else 0
-    fasting_sugar = st.selectbox("Fasting Blood Sugar > 120", ["No", "Yes"])
-    fasting_sugar = 1 if fasting_sugar == "Yes" else 0
-    st_depression = st.slider("ST Depression", 0.0, 6.0, 1.0)
-    major_vessels = st.slider("Major Vessels (0-4)", 0, 4, 0)
-    thalassemia = st.slider("Thalassemia Status", 0, 3, 2)
-    slope = st.slider("Slope of ST Segment", 0, 2, 1)
-    rest_ecg = st.slider("Rest ECG Result", 0, 2, 1)
+    bp_history = st.selectbox("History of high blood pressure?", ["No", "Yes"])
+    bp_history = 1 if bp_history == "Yes" else 0
 
-st.write("")
+    family_history = st.selectbox("Family history of heart disease?", ["No", "Yes"])
+    family_history = 1 if family_history == "Yes" else 0
+
+    chest_pain = st.selectbox("Do you experience chest pain during physical activity?", ["No", "Yes"])
+    chest_pain = 1 if chest_pain == "Yes" else 0
+
+    exercise = st.selectbox("Physical Activity Level", ["Low", "Moderate", "High"])
+
+    heart_rate = st.slider("Resting Heart Rate", 50, 120, 75)
+
+# ---------------- FEATURE MAPPING ----------------
+
+# Convert BMI
+bmi = weight / ((height/100)**2)
+
+# Approximate mappings for model features
+
+cp = 2 if chest_pain else 0
+trestbps = 140 if bp_history else 120
+chol = 260 if smoking else 200
+fbs = 1 if diabetes else 0
+restecg = 1
+thalach = 200 - age
+exang = chest_pain
+oldpeak = 2 if chest_pain else 1
+slope = 1
+ca = 2 if family_history else 0
+thal = 2
+
+# Arrange input for model
+data = np.array([[age, sex, cp, trestbps, chol, fbs,
+                  restecg, thalach, exang, oldpeak,
+                  slope, ca, thal]])
 
 # ---------------- PREDICTION ----------------
-if st.button("Analyze Cardiac Risk"):
 
-    data = np.array([[age, sex, chest_pain, resting_bp, cholesterol,
-                      fasting_sugar, rest_ecg, max_hr, exercise_angina,
-                      st_depression, slope, major_vessels, thalassemia]])
+if st.button("Analyze Heart Risk"):
 
-    probability = model.predict_proba(data)[0][1]
-    risk_percent = round(probability * 100, 2)
+    prob = model.predict_proba(data)[0][1]
+    percent = round(prob * 100, 2)
 
-    st.markdown("---")
-    st.markdown("<div class='section-title'>Clinical Risk Summary</div>", unsafe_allow_html=True)
+    st.subheader("Prediction Result")
 
-    # Risk Level
-    if risk_percent < 30:
-        st.success(f"Low Clinical Risk — {risk_percent}%")
-    elif risk_percent < 70:
-        st.warning(f"Moderate Clinical Risk — {risk_percent}%")
+    if percent < 30:
+        st.success(f"Low Risk ({percent}%)")
+
+    elif percent < 70:
+        st.warning(f"Moderate Risk ({percent}%)")
+
     else:
-        st.error(f"High Clinical Risk — {risk_percent}%")
+        st.error(f"High Risk ({percent}%)")
 
-    st.progress(risk_percent / 100)
+    st.progress(percent/100)
 
-    st.info("Prediction is based on combined interaction of multiple clinical indicators.")
-
-    # Show only key abnormal factors
-    st.markdown("<div class='section-title'>Key Risk Indicators</div>", unsafe_allow_html=True)
-
-    risk_factors = []
-
-    if resting_bp > 140:
-        risk_factors.append("Elevated Resting Blood Pressure")
-    if cholesterol > 240:
-        risk_factors.append("High Serum Cholesterol")
-    if chest_pain > 1:
-        risk_factors.append("High-Risk Chest Pain Pattern")
-    if major_vessels > 0:
-        risk_factors.append("Major Vessel Involvement")
-    if st_depression > 1:
-        risk_factors.append("Significant ST Depression")
-    if exercise_angina == 1:
-        risk_factors.append("Exercise-Induced Angina Present")
-
-    if risk_factors:
-        for factor in risk_factors:
-            st.write("•", factor)
-    else:
-        st.write("No dominant abnormal indicators detected.")
-
-    # Recommendation
-    st.markdown("<div class='section-title'>Recommended Action</div>", unsafe_allow_html=True)
-
-    if risk_percent > 70:
-        st.error("Immediate cardiology consultation strongly recommended.")
-    elif risk_percent > 40:
-        st.warning("Medical evaluation advised in near term.")
-    else:
-        st.success("Maintain preventive lifestyle and routine monitoring.")
-
-    st.caption("Academic AI-based decision support system. Not a substitute for professional medical diagnosis.")
+    st.write("⚠️ This system is an educational prototype and not a medical diagnosis tool.")
