@@ -2,177 +2,181 @@ import streamlit as st
 import pickle
 import numpy as np
 
-# ---------------- PAGE CONFIG ----------------
-st.set_page_config(page_title="CardioGuard AI", layout="centered")
+# ---------------- CONFIG ----------------
+st.set_page_config(page_title="CardioGuard AI", layout="wide")
+
+# ---------------- STYLE ----------------
+st.markdown("""
+<style>
+.main {
+    background-color: #0e1117;
+}
+.title {
+    text-align:center;
+    color:#d4a373;
+}
+.subtitle {
+    text-align:center;
+    color:#ccc;
+}
+.block {
+    background-color:#161b22;
+    padding:20px;
+    border-radius:12px;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # ---------------- LOAD MODEL ----------------
-model = pickle.load(open("model.pkl","rb"))
-scaler = pickle.load(open("scaler.pkl","rb"))
+model = pickle.load(open("model.pkl", "rb"))
+scaler = pickle.load(open("scaler.pkl", "rb"))
 
 # ---------------- HEADER ----------------
-st.title("CardioGuard AI")
-st.subheader("Smart Heart Attack Risk Screening")
+st.markdown("<h1 class='title'>CardioGuard AI</h1>", unsafe_allow_html=True)
+st.markdown("<p class='subtitle'>Smart Heart Attack Risk Screening</p>", unsafe_allow_html=True)
 
-st.write(
-"""
-Enter your symptoms and lifestyle details to estimate your cardiac risk.  
-This tool helps you decide whether medical consultation is needed.
-"""
-)
+st.write("")
 
-# ---------------- INPUTS ----------------
+# ---------------- INPUT ----------------
+st.markdown("## Basic Information")
+c1, c2, c3 = st.columns(3)
 
-st.markdown("### Basic Information")
+with c1:
+    age = st.slider("Age", 18, 80, 30)
+    sex = st.selectbox("Gender", ["Male", "Female"])
+    sex = 1 if sex == "Male" else 0
 
-age = st.slider("Age", 18, 90, 35)
+with c2:
+    weight = st.slider("Weight (kg)", 40, 120, 70)
+    height = st.slider("Height (cm)", 140, 200, 170)
 
-gender = st.selectbox("Gender", ["Male","Female"])
-sex = 1 if gender == "Male" else 0
+with c3:
+    bmi = weight / ((height/100) ** 2)
 
-weight = st.slider("Weight (kg)", 40, 120, 70)
-height = st.slider("Height (cm)", 140, 200, 170)
+st.markdown("## Lifestyle Factors")
+c1, c2 = st.columns(2)
 
-# ---------------- LIFESTYLE ----------------
+with c1:
+    smoking = st.selectbox("Do you smoke?", ["No", "Yes"])
+    high_bp = st.selectbox("Do you have high blood pressure?", ["No", "Yes"])
+    diabetes = st.selectbox("Do you have diabetes?", ["No", "Yes"])
 
-st.markdown("### Lifestyle Factors")
+with c2:
+    family_history = st.selectbox("Family history of heart disease?", ["No", "Yes"])
+    activity = st.selectbox("Physical activity level", ["Low", "Moderate", "High"])
 
-smoking = st.selectbox("Do you smoke?", ["No","Yes"])
-smoking = 1 if smoking == "Yes" else 0
+st.markdown("## Current Symptoms")
+c1, c2 = st.columns(2)
 
-bp = st.selectbox("Do you have high blood pressure?", ["No","Yes"])
-bp = 1 if bp == "Yes" else 0
+with c1:
+    chest_pain_intensity = st.slider("Chest Pain Intensity (0-10)", 0, 10, 2)
+    chest_pain_type = st.selectbox("Chest Pain Type", ["None", "Mild", "Sharp Pain"])
 
-diabetes = st.selectbox("Do you have diabetes?", ["No","Yes"])
-diabetes = 1 if diabetes == "Yes" else 0
+with c2:
+    breath_shortness = st.selectbox("Shortness of breath?", ["No", "Yes"])
+    fatigue = st.selectbox("Unusual fatigue?", ["No", "Yes"])
 
-family = st.selectbox("Family history of heart disease?", ["No","Yes"])
-family = 1 if family == "Yes" else 0
-
-activity = st.selectbox("Physical activity level", ["Low","Moderate","High"])
-
-# ---------------- SYMPTOMS ----------------
-
-st.markdown("### Current Symptoms")
-
-chest_pain_level = st.slider("Chest Pain Intensity (0-10)", 0, 10, 2)
-
-chest_pain_type = st.selectbox(
-    "Chest Pain Type",
-    ["No Pain", "Sharp Pain", "Pressure/Tightness", "Burning Sensation"]
-)
-
-breath = st.selectbox("Shortness of breath?", ["No","Yes"])
-breath = 1 if breath == "Yes" else 0
-
-fatigue = st.selectbox("Unusual fatigue?", ["No","Yes"])
-fatigue = 1 if fatigue == "Yes" else 0
-
-# ---------------- FEATURE MAPPING ----------------
-
-bmi = weight / ((height/100)**2)
-
-cp = 2 if chest_pain_level > 4 else 0
-
-trestbps = 140 if bp else 120
-
-chol = 250 if smoking else 200
-
-fbs = 1 if diabetes else 0
-
-restecg = 1
-
-thalach = 200 - age
-
-exang = breath
-
-oldpeak = 2 if chest_pain_level > 5 else 1
-
-slope = 1
-
-ca = 2 if family else 0
-
-thal = 2
-
-data = np.array([[age, sex, cp, trestbps, chol, fbs,
-                  restecg, thalach, exang, oldpeak,
-                  slope, ca, thal]])
-
-# ---------------- SCALE ----------------
-data = scaler.transform(data)
+st.write("")
 
 # ---------------- PREDICT ----------------
+if st.button("Analyze Risk", use_container_width=True):
 
-if st.button("Analyze Risk"):
+    # ---------------- MAP TO MODEL FEATURES ----------------
+    cp = 2 if chest_pain_type == "Sharp Pain" else 1 if chest_pain_type == "Mild" else 0
+    trestbps = 150 if high_bp == "Yes" else 120
+    chol = 260 if bmi > 27 else 200
+    fbs = 1 if diabetes == "Yes" else 0
+    restecg = 1
+    thalach = 120 if activity == "Low" else 150
+    exang = 1 if breath_shortness == "Yes" else 0
+    oldpeak = chest_pain_intensity / 5
+    slope = 1
+    ca = 2 if smoking == "Yes" else 0
+    thal = 2
+
+    data = np.array([[age, sex, cp, trestbps, chol, fbs, restecg,
+                      thalach, exang, oldpeak, slope, ca, thal]])
+
+    data = scaler.transform(data)
 
     prob = model.predict_proba(data)[0][1]
-    percent = round(prob * 100, 2)
+    percent = prob * 100
 
+    # ---------------- HYBRID SYMPTOM SCORING ----------------
+    symptom_score = 0
+
+    if chest_pain_intensity > 7:
+        symptom_score += 25
+    if chest_pain_type == "Sharp Pain":
+        symptom_score += 15
+    if breath_shortness == "Yes":
+        symptom_score += 15
+    if fatigue == "Yes":
+        symptom_score += 10
+    if smoking == "Yes":
+        symptom_score += 10
+    if high_bp == "Yes":
+        symptom_score += 10
+    if diabetes == "Yes":
+        symptom_score += 10
+    if family_history == "Yes":
+        symptom_score += 10
+
+    final_percent = min(100, percent + symptom_score)
+
+    # ---------------- OUTPUT ----------------
     st.markdown("## Risk Result")
 
-    # ---------------- RISK LEVEL ----------------
-    if percent < 30:
-        st.success(f"Low Risk ({percent}%)")
-
-        st.write("You currently show low signs of cardiac risk.")
-
-        st.markdown("### Maintain Good Health")
-        st.write("• Continue regular exercise")
-        st.write("• Maintain healthy diet")
-        st.write("• Avoid smoking and stress")
-
-    elif percent < 70:
-        st.warning(f"Moderate Risk ({percent}%)")
-
-        st.write("Some risk factors detected.")
-
-        st.markdown("### Recommended Actions")
-        st.write("• Improve lifestyle habits")
-        st.write("• Reduce smoking or alcohol")
-        st.write("• Monitor symptoms regularly")
-        st.write("• Consider medical checkup")
-
+    if final_percent < 30:
+        st.success(f"Low Risk ({round(final_percent,1)}%)")
+    elif final_percent < 70:
+        st.warning(f"Moderate Risk ({round(final_percent,1)}%)")
     else:
-        st.error(f"High Risk ({percent}%)")
+        st.error(f"High Risk ({round(final_percent,1)}%)")
 
-        st.write("High probability of cardiac risk detected.")
+    st.progress(final_percent / 100)
 
-        st.markdown("### Immediate Attention Required")
-        st.write("• Consult a doctor immediately")
-        st.write("• Avoid physical exertion")
-        st.write("• Monitor chest pain carefully")
+    # ---------------- RECOMMENDATIONS ----------------
+    st.markdown("### Recommended Actions")
 
-    st.progress(percent/100)
+    actions = []
 
-    # ---------------- KEY RISK FACTORS ----------------
+    if smoking == "Yes":
+        actions.append("Stop smoking immediately")
+    if high_bp == "Yes":
+        actions.append("Monitor and control blood pressure")
+    if diabetes == "Yes":
+        actions.append("Manage blood sugar levels")
+    if activity == "Low":
+        actions.append("Increase physical activity")
+    if chest_pain_intensity > 6:
+        actions.append("Seek medical consultation immediately")
+
+    if not actions:
+        actions.append("Maintain a healthy lifestyle")
+
+    for a in actions:
+        st.write("•", a)
+
+    # ---------------- KEY CONTRIBUTORS ----------------
     st.markdown("### Key Risk Contributors")
 
-    risks = []
+    contributors = []
 
-    if chest_pain_level > 5:
-        risks.append("Severe chest pain")
+    if chest_pain_intensity > 7:
+        contributors.append("Severe chest pain")
+    if breath_shortness == "Yes":
+        contributors.append("Shortness of breath")
+    if smoking == "Yes":
+        contributors.append("Smoking habit")
+    if high_bp == "Yes":
+        contributors.append("High blood pressure")
+    if diabetes == "Yes":
+        contributors.append("Diabetes")
+    if family_history == "Yes":
+        contributors.append("Family history")
 
-    if breath == 1:
-        risks.append("Shortness of breath")
+    for c in contributors:
+        st.write("•", c)
 
-    if smoking == 1:
-        risks.append("Smoking habit")
-
-    if bp == 1:
-        risks.append("High blood pressure")
-
-    if diabetes == 1:
-        risks.append("Diabetes")
-
-    if family == 1:
-        risks.append("Family history")
-
-    if risks:
-        for r in risks:
-            st.write("•", r)
-    else:
-        st.write("No major risk factors detected")
-
-    # ---------------- DISCLAIMER ----------------
-    st.caption(
-        "This is an AI-based screening tool and not a medical diagnosis. Consult a healthcare professional for accurate evaluation."
-    )
+    st.caption("AI-based screening tool. Not a medical diagnosis.")
